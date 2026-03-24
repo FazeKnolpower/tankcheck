@@ -1,0 +1,7 @@
+.git
+.DS_Store
+.claude
+ANWB-Fuel-Prices
+__pycache__
+*.pyc
+.env
