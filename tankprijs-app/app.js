@@ -141,14 +141,14 @@
 
     function renderMarkers(visibleStations) {
         clearMarkers();
+        if (!visibleStations.length) return;
 
         const withPrice = visibleStations.filter(s => getPrice(s) !== null);
-        if (!withPrice.length) return;
+        const cheapestId = withPrice.length
+            ? withPrice.reduce((a, b) => getPrice(a) < getPrice(b) ? a : b).id
+            : null;
 
-        const cheapestId = withPrice.reduce((a, b) =>
-            getPrice(a) < getPrice(b) ? a : b).id;
-
-        withPrice.forEach((station, i) => {
+        visibleStations.forEach((station, i) => {
             const price = getPrice(station);
             const isSelected = selectedStation && station.id === selectedStation.id;
 
@@ -156,9 +156,11 @@
             if (isSelected)              cls += ' selected';
             else if (station.id === cheapestId) cls += ' cheapest';
 
+            const label = price !== null ? `€${price.toFixed(3)}` : (station.brand || '⛽');
+
             const icon = L.divIcon({
                 className: '',
-                html: `<div class="${cls}" style="animation-delay:${i * 25}ms">€${price.toFixed(3)}</div>`,
+                html: `<div class="${cls}" style="animation-delay:${i * 25}ms">${label}</div>`,
                 iconSize: [72, 28],
                 iconAnchor: [36, 14],
             });
@@ -314,8 +316,7 @@
             return;
         }
 
-        const withPrice = stations.filter(s => getPrice(s) !== null);
-        if (!withPrice.length) {
+        if (!stations.length) {
             clearMarkers();
             cardBadge.textContent   = 'Geen resultaten';
             cardName.textContent    = 'Geen stations gevonden';
@@ -325,11 +326,14 @@
             return;
         }
 
-        const cheapest = withPrice.reduce(
-            (a, b) => getPrice(a) < getPrice(b) ? a : b
-        );
         renderMarkers(stations);
-        await selectStation(cheapest);
+
+        // Selecteer goedkoopste met prijs, of anders dichtstbijzijnde
+        const withPrice = stations.filter(s => getPrice(s) !== null);
+        const best = withPrice.length
+            ? withPrice.reduce((a, b) => getPrice(a) < getPrice(b) ? a : b)
+            : stations[0];
+        await selectStation(best);
     }
 
     // --- Slider ---

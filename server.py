@@ -1,4 +1,5 @@
 import io
+import logging
 import math
 import os
 import re
@@ -9,16 +10,24 @@ import requests
 from PIL import Image
 import pytesseract
 
+# Logging instellen
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("tankcheck")
+
 app = Flask(__name__)
 
 TANKSERVICE_BASE = "https://tankservice.app-it-up.com/Tankservice/v2"
-FETCH_HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://directlease.nl/"}
+FETCH_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://directlease.nl/",
+    "Accept": "image/png,image/*,*/*",
+}
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "tankprijs-app")
 CACHE_TTL = 3600  # 1 uur
 
 # In-memory cache
-_stations_cache: dict = {}     # fuel_code -> {data, ts}
-_price_cache: dict = {}        # station_id -> {prices, address, ts}
+_stations_cache: dict = {}
+_price_cache: dict = {}
 
 FUEL_TYPES = [
     {"code": "euro95",  "name": "Euro 95"},
@@ -63,8 +72,10 @@ def get_all_stations(fuel_code="euro95"):
             headers=FETCH_HEADERS,
             timeout=15,
         )
+        log.info(f"Places API status: {r.status_code}, items: {len(r.json()) if r.status_code == 200 else 0}")
         data = r.json() if r.status_code == 200 else []
-    except Exception:
+    except Exception as e:
+        log.error(f"Places API fout: {e}")
         data = []
     _stations_cache[fuel_code] = {"data": data, "ts": now}
     return data
@@ -76,14 +87,13 @@ def parse_prices_from_ocr(text: str) -> dict:
     lines = [l.strip() for l in text.strip().split("\n") if l.strip()]
 
     for i, line in enumerate(lines):
-        # First two non-empty lines = address
         if i == 0:
             result["address"] = line
         elif i == 1:
             result["postal_city"] = line
 
-        # Normalize superscript digit (OCR reads ⁹ as °)
-        norm = line.replace("°", "9")
+        # Normalize superscript digit (OCR reads ⁹ as ° or 9)
+        norm = line.replace("°", "9").replace("®", "9").replace("©", "9")
 
         m = re.search(r"[€£]\s*([\d,.]+)", norm)
         if not m:
@@ -128,17 +138,33 @@ def fetch_station_prices(station_id: int) -> dict:
         r = requests.get(
             f"{TANKSERVICE_BASE}/places/{station_id}.png?lang=nl",
             headers=FETCH_HEADERS,
-            timeout=8,
+            timeout=10,
         )
         if r.status_code != 200:
+            log.warning(f"PNG fetch mislukt voor station {station_id}: HTTP {r.status_code}")
             return {}
+
         img = Image.open(io.BytesIO(r.content))
-        text = pytesseract.image_to_string(img, lang="nld")
+
+        # Probeer eerst met Nederlandse taaldata, dan fallback naar Engels
+        text = ""
+        try:
+            text = pytesseract.image_to_string(img, lang="nld")
+        except Exception:
+            try:
+                text = pytesseract.image_to_string(img, lang="eng")
+            except Exception as e:
+                log.error(f"OCR volledig mislukt voor station {station_id}: {e}")
+                return {}
+
+        log.info(f"OCR station {station_id}: '{text[:80]}...'")
         parsed = parse_prices_from_ocr(text)
         parsed["ts"] = now
         _price_cache[station_id] = parsed
         return parsed
-    except Exception:
+
+    except Exception as e:
+        log.error(f"Fout bij station {station_id}: {e}")
         return {}
 
 
@@ -170,18 +196,20 @@ def stations():
         return jsonify({"error": "Ongeldige parameters"}), 400
 
     all_stations = get_all_stations(fuel_code)
+    log.info(f"Totaal stations geladen: {len(all_stations)}")
 
     # Filter op afstand
     nearby = [
         s for s in all_stations
         if haversine_km(user_lat, user_lon, s["lat"], s["lng"]) <= radius_km
     ]
+    log.info(f"Stations binnen {radius_km}km: {len(nearby)}")
 
-    # Begrens tot 60 stations voor snelheid
+    # Begrens tot 20 stations (minder = sneller OCR)
     nearby.sort(key=lambda s: haversine_km(user_lat, user_lon, s["lat"], s["lng"]))
-    nearby = nearby[:60]
+    nearby = nearby[:20]
 
-    # Haal prijzen concurrent op via OCR
+    # Haal prijzen concurrent op via OCR (max 4 tegelijk om rate limiting te voorkomen)
     def enrich(station):
         info = fetch_station_prices(station["id"])
         return {
@@ -189,21 +217,59 @@ def stations():
             "lat":      station["lat"],
             "lng":      station["lng"],
             "brand":    station.get("brand", "Onbekend"),
+            "name":     station.get("name", ""),
             "city":     station.get("city", ""),
             "address":  info.get("address", ""),
+            "postal_city": info.get("postal_city", ""),
             "prices":   info.get("prices", {}),
         }
 
-    with ThreadPoolExecutor(max_workers=10) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         results = list(ex.map(enrich, nearby))
 
-    # Stuur alleen stations terug die een prijs hebben voor het gekozen type
-    results_with_price = [s for s in results if fuel_code in s["prices"]]
+    with_price = [s for s in results if fuel_code in s.get("prices", {})]
+    without_price = [s for s in results if fuel_code not in s.get("prices", {})]
+    log.info(f"Met prijs: {len(with_price)}, zonder prijs: {len(without_price)}")
 
-    return jsonify(results_with_price)
+    # Stuur alles terug - stations met prijs eerst
+    return jsonify(with_price + without_price)
+
+
+@app.route("/api/debug-ocr/<int:station_id>")
+def debug_ocr(station_id):
+    """Debug endpoint om OCR te testen voor één station."""
+    try:
+        r = requests.get(
+            f"{TANKSERVICE_BASE}/places/{station_id}.png?lang=nl",
+            headers=FETCH_HEADERS,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"PNG fetch failed: HTTP {r.status_code}"}), 500
+
+        img = Image.open(io.BytesIO(r.content))
+
+        # Probeer beide talen
+        results = {}
+        for lang in ["nld", "eng"]:
+            try:
+                text = pytesseract.image_to_string(img, lang=lang)
+                parsed = parse_prices_from_ocr(text)
+                results[lang] = {"raw_text": text, "parsed": parsed}
+            except Exception as e:
+                results[lang] = {"error": str(e)}
+
+        return jsonify({
+            "station_id": station_id,
+            "png_size": len(r.content),
+            "image_size": f"{img.width}x{img.height}",
+            "results": results,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print(f"TankCheck server draait op http://localhost:{port}")
+    log.info(f"TankCheck server draait op http://localhost:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
