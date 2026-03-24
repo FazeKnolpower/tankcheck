@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -v \"https://router.project-osrm.org/route/v1/driving/4.9041,52.3676;4.85,52.38?overview=full&geometries=geojson\")",
+      "Bash(curl -s \"https://valhalla1.openstreetmap.de/route?json=%7B%22locations%22%3A%5B%7B%22lat%22%3A52.3676%2C%22lon%22%3A4.9041%7D%2C%7B%22lat%22%3A52.38%2C%22lon%22%3A4.85%7D%5D%2C%22costing%22%3A%22auto%22%2C%22units%22%3A%22km%22%7D\")",
+      "Bash(curl -s \"https://routing.openstreetmap.de/routed-car/route/v1/driving/4.9041,52.3676;4.85,52.38?overview=full&geometries=geojson\")",
+      "Bash(curl -v \"https://routing.openstreetmap.de/routed-car/route/v1/driving/4.9041,52.3676;4.85,52.38?overview=full&geometries=geojson\")",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)"
+    ]
+  }
+}

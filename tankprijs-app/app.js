@@ -251,7 +251,7 @@
 
         const lat = station.lat;
         const lng = station.lng;
-        btnFlits.href  = 'https://www.flitsmeister.nl/';
+        btnFlits.href  = `flitsmeister://navigate?lat=${lat}&lon=${lng}`;
         btnGoogle.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
         btnApple.href  = `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d&t=m`;
 

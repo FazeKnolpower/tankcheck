@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tankcheck",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/brammapgear/Documents/Claude/tankprijs-app", "-l", "3456", "--no-clipboard"],
+      "port": 3456
+    }
+  ]
+}
