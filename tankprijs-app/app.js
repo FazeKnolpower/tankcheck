@@ -156,7 +156,7 @@
             if (isSelected)              cls += ' selected';
             else if (station.id === cheapestId) cls += ' cheapest';
 
-            const label = price !== null ? `€${price.toFixed(3)}` : (station.brand || '⛽');
+            const label = price !== null ? `€${price.toFixed(3)}` : '€---';
 
             const icon = L.divIcon({
                 className: '',
@@ -246,7 +246,7 @@
         cardName.textContent    = station.brand || station.city;
         cardAddress.textContent = station.address
             ? `${station.address}, ${station.city}` : station.city;
-        cardPrice.textContent   = price ? `€${price.toFixed(3)}` : '—';
+        cardPrice.textContent   = price ? `€${price.toFixed(3)}` : '€---';
         cardDistance.textContent = `${km.toFixed(1)} km`;
 
         const lat = station.lat;
