@@ -100,7 +100,7 @@ html, body {
 
 .leaflet-control-zoom { display: none !important; }
 .leaflet-control-attribution { display: none !important; }
-.leaflet-container { background: #e8e0d0 !important; }
+.leaflet-container { background: transparent !important; }
 
 /* User marker - Apple Maps style */
 .user-dot {
