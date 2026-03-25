@@ -211,7 +211,11 @@ def stations():
 
     # Haal prijzen concurrent op via OCR (max 4 tegelijk om rate limiting te voorkomen)
     def enrich(station):
-        info = fetch_station_prices(station["id"])
+        try:
+            info = fetch_station_prices(station["id"])
+        except Exception as e:
+            log.error(f"OCR crash voor station {station['id']}: {e}")
+            info = {}
         return {
             "id":       station["id"],
             "lat":      station["lat"],
@@ -219,13 +223,22 @@ def stations():
             "brand":    station.get("brand", "Onbekend"),
             "name":     station.get("name", ""),
             "city":     station.get("city", ""),
-            "address":  info.get("address", ""),
+            "address":  info.get("address", station.get("address", "")),
             "postal_city": info.get("postal_city", ""),
             "prices":   info.get("prices", {}),
         }
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        results = list(ex.map(enrich, nearby))
+    try:
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            results = list(ex.map(enrich, nearby))
+    except Exception as e:
+        log.error(f"ThreadPool fout: {e}")
+        # Fallback: return stations zonder prijzen
+        results = [{
+            "id": s["id"], "lat": s["lat"], "lng": s["lng"],
+            "brand": s.get("brand", "Onbekend"), "name": s.get("name", ""),
+            "city": s.get("city", ""), "address": "", "postal_city": "", "prices": {},
+        } for s in nearby]
 
     with_price = [s for s in results if fuel_code in s.get("prices", {})]
     without_price = [s for s in results if fuel_code not in s.get("prices", {})]

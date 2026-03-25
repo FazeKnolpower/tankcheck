@@ -19,7 +19,7 @@ html, body {
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
-    background: transparent;
+    background: #ffffff;
 }
 
 /* ===== LOADING ===== */
@@ -100,7 +100,7 @@ html, body {
 
 .leaflet-control-zoom { display: none !important; }
 .leaflet-control-attribution { display: none !important; }
-.leaflet-container { background: transparent !important; }
+.leaflet-container { background: #ffffff !important; }
 
 /* User marker - Apple Maps style */
 .user-dot {
