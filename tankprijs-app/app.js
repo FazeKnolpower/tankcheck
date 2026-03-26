@@ -235,7 +235,7 @@
         // Ruimte voor slider rechts (70px) en bottom card
         map.fitBounds(
             L.latLngBounds([[userLocation.lat, userLocation.lng], [to.lat, to.lng]]),
-            { paddingTopLeft: [20, 60], paddingBottomRight: [70, 260],
+            { paddingTopLeft: [20, 80], paddingBottomRight: [70, 280],
               maxZoom: 15, animate: true, duration: 0.6 }
         );
 

@@ -163,48 +163,62 @@ html, body {
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== TOP BAR ===== */
-.top-bar {
+/* ===== TOP HEADER (full-width, covers status bar) ===== */
+.top-header {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 12px);
-    left: 16px;
+    top: 0;
+    left: 0;
+    right: 0;
     z-index: 1000;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-radius: 20px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04);
-    white-space: nowrap;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    border-bottom: 0.5px solid rgba(0,0,0,0.06);
     opacity: 0;
-    transform: translateY(-20px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: translateY(-100%);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
-.top-bar.visible {
+.top-header.visible {
     opacity: 1;
     transform: translateY(0);
 }
 
-.top-bar-icon { font-size: 15px; line-height: 1; }
+.top-header-content {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 18px;
+}
+
+.top-bar-icon { font-size: 16px; line-height: 1; }
 
 .top-bar-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 800;
     color: #1a1a1a;
     letter-spacing: -0.3px;
 }
 
+/* ===== BOTTOM SAFE AREA COVER ===== */
+.bottom-safe {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-bottom, 0px);
+    background: white;
+    z-index: 999;
+}
+
 /* ===== MAP ===== */
 #map {
     position: fixed;
-    top: calc(-1 * env(safe-area-inset-top, 0px));
-    left: calc(-1 * env(safe-area-inset-left, 0px));
-    right: calc(-1 * env(safe-area-inset-right, 0px));
-    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 1;
 }
 
@@ -294,7 +308,7 @@ html, body {
 .slider-rail {
     position: fixed;
     right: 12px;
-    top: calc(env(safe-area-inset-top, 0px) + 60px);
+    top: calc(env(safe-area-inset-top, 0px) + 50px);
     bottom: auto;
     z-index: 1000;
     display: flex;
