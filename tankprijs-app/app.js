@@ -77,6 +77,14 @@
             `linear-gradient(to right, #007AFF ${pct}%, #E5E5EA ${pct}%)`;
     }
 
+    // --- Slider hoogte responsive op schermformaat ---
+    function resizeSlider() {
+        const track = document.querySelector('.slider-track');
+        if (!track) return;
+        const trackHeight = track.clientHeight;
+        slider.style.width = trackHeight + 'px';
+    }
+
     // --- Polyline decoderen (Valhalla precision 6) ---
     function decodePolyline(encoded) {
         const factor = 1e6;
@@ -399,9 +407,15 @@
     // --- Show UI elements with stagger ---
     function showUI() {
         setTimeout(() => topBar.classList.add('visible'), 100);
-        setTimeout(() => sliderBar.classList.add('visible'), 250);
+        setTimeout(() => {
+            sliderBar.classList.add('visible');
+            setTimeout(resizeSlider, 50);
+        }, 250);
         setTimeout(() => bottomCard.classList.add('visible'), 400);
     }
+
+    // Resize slider on orientation/window change
+    window.addEventListener('resize', resizeSlider);
 
     // --- Init ---
     async function init() {

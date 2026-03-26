@@ -370,7 +370,7 @@ html, body {
 #radius-slider {
     -webkit-appearance: none;
     appearance: none;
-    width: 100%;
+    width: 200px;
     height: 3px;
     border-radius: 2px;
     background: linear-gradient(to right, #007AFF 0%, #E5E5EA 100%);
@@ -380,10 +380,7 @@ html, body {
     transform-origin: center center;
 }
 
-/* Make the rotated slider fill the track height */
-.slider-track #radius-slider {
-    width: calc(100vh - env(safe-area-inset-top, 0px) - 400px);
-}
+/* Rotated slider matches the track's flex height via JS */
 
 #radius-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
@@ -662,8 +659,6 @@ html, body {
 
 /* ===== RESPONSIVE ===== */
 @media (max-height: 700px) {
-    .slider-rail { bottom: 240px; }
-    .slider-track #radius-slider { width: calc(100vh - env(safe-area-inset-top, 0px) - 350px); }
     .bottom-card { padding: 8px 14px calc(env(safe-area-inset-bottom, 4px) + 8px); }
     .card-name { font-size: 18px; }
     .card-price { font-size: 20px; }
