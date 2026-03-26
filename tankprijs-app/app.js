@@ -12,18 +12,42 @@
     let fetchTimer = null;
 
     // --- DOM ---
-    const loading     = document.getElementById('loading');
-    const loadingText = document.getElementById('loading-text');
-    const sliderText  = document.getElementById('slider-text');
-    const slider      = document.getElementById('radius-slider');
-    const cardBadge   = document.getElementById('card-badge');
-    const cardName    = document.getElementById('card-name');
-    const cardAddress = document.getElementById('card-address');
-    const cardPrice   = document.getElementById('card-price');
-    const cardDistance = document.getElementById('card-distance');
-    const btnFlits    = document.getElementById('btn-flits');
-    const btnGoogle   = document.getElementById('btn-google');
-    const btnApple    = document.getElementById('btn-apple');
+    const loading      = document.getElementById('loading');
+    const loadingBar   = document.getElementById('loading-bar-fill');
+    const topBar       = document.getElementById('top-bar');
+    const sliderBar    = document.getElementById('slider-bar');
+    const sliderText   = document.getElementById('slider-text');
+    const slider       = document.getElementById('radius-slider');
+    const bottomCard   = document.getElementById('bottom-card');
+    const cardStation  = document.getElementById('card-station');
+    const cardBadge    = document.getElementById('card-badge');
+    const cardName     = document.getElementById('card-name');
+    const cardAddress  = document.getElementById('card-address');
+    const cardPrice    = document.getElementById('card-price');
+    const cardDistance  = document.getElementById('card-distance');
+    const btnFlits     = document.getElementById('btn-flits');
+    const btnGoogle    = document.getElementById('btn-google');
+    const btnApple     = document.getElementById('btn-apple');
+
+    // --- Loading steps ---
+    function setLoadingStep(stepId, progress) {
+        // Mark previous steps as done
+        const steps = ['step-location', 'step-map', 'step-fuel', 'step-route'];
+        const idx = steps.indexOf(stepId);
+        steps.forEach((s, i) => {
+            const el = document.getElementById(s);
+            if (i < idx) {
+                el.classList.remove('active');
+                el.classList.add('done');
+            } else if (i === idx) {
+                el.classList.add('active');
+                el.classList.remove('done');
+            } else {
+                el.classList.remove('active', 'done');
+            }
+        });
+        loadingBar.style.width = progress + '%';
+    }
 
     // --- Haversine ---
     function dist(lat1, lng1, lat2, lng2) {
@@ -160,7 +184,7 @@
 
             const icon = L.divIcon({
                 className: '',
-                html: `<div class="${cls}" style="animation-delay:${i * 25}ms">${label}</div>`,
+                html: `<div class="${cls}" style="animation-delay:${i * 30}ms">${label}</div>`,
                 iconSize: [72, 28],
                 iconAnchor: [36, 14],
             });
@@ -184,7 +208,7 @@
         const route = await getRoute(userLocation, to);
 
         routeOutline = L.polyline(route.coords, {
-            color: '#0055D4', weight: 8, opacity: 0.15,
+            color: '#0055D4', weight: 8, opacity: 0.12,
             lineCap: 'round', lineJoin: 'round'
         }).addTo(map);
 
@@ -208,10 +232,10 @@
             }).addTo(map);
         }
 
-        // Ruimte voor slider rechts (70px) en bottom card (220px)
+        // Ruimte voor slider rechts (70px) en bottom card
         map.fitBounds(
             L.latLngBounds([[userLocation.lat, userLocation.lng], [to.lat, to.lng]]),
-            { paddingTopLeft: [20, 60], paddingBottomRight: [70, 220],
+            { paddingTopLeft: [20, 60], paddingBottomRight: [70, 260],
               maxZoom: 15, animate: true, duration: 0.6 }
         );
 
@@ -233,20 +257,43 @@
             station.lat, station.lng
         );
 
+        // Fade-out card content during update
+        if (isNewStation) cardStation.classList.add('updating');
+
         const sorted = stations
             .filter(s => getPrice(s) !== null)
             .sort((a, b) => getPrice(a) - getPrice(b));
         const rank = sorted.findIndex(s => s.id === station.id) + 1;
 
-        cardBadge.textContent = rank === 1 ? 'Goedkoopst' : `#${rank} goedkoopst`;
-        cardBadge.style.background = rank === 1
-            ? 'rgba(52,199,89,0.12)' : 'rgba(0,122,255,0.1)';
-        cardBadge.style.color = rank === 1 ? '#248A3D' : '#0055D4';
+        // Kleine delay voor smooth transition
+        await new Promise(r => setTimeout(r, isNewStation ? 150 : 0));
+
+        if (rank === 1) {
+            cardBadge.textContent = 'Goedkoopst';
+            cardBadge.style.background = 'rgba(52,199,89,0.12)';
+            cardBadge.style.color = '#248A3D';
+        } else if (rank > 0) {
+            cardBadge.textContent = `#${rank} goedkoopst`;
+            cardBadge.style.background = 'rgba(0,122,255,0.1)';
+            cardBadge.style.color = '#0055D4';
+        } else {
+            cardBadge.textContent = 'Geen prijs';
+            cardBadge.style.background = 'rgba(0,0,0,0.06)';
+            cardBadge.style.color = '#8E8E93';
+        }
 
         cardName.textContent    = station.brand || station.city;
         cardAddress.textContent = station.address
             ? `${station.address}, ${station.city}` : station.city;
-        cardPrice.textContent   = price ? `€${price.toFixed(3)}` : '€---';
+
+        if (price) {
+            cardPrice.textContent = `€${price.toFixed(3)}`;
+            cardPrice.classList.remove('no-price');
+        } else {
+            cardPrice.textContent = '€---';
+            cardPrice.classList.add('no-price');
+        }
+
         cardDistance.textContent = `${km.toFixed(1)} km`;
 
         const lat = station.lat;
@@ -254,6 +301,9 @@
         btnFlits.href  = `flitsmeister://navigate?lat=${lat}&lon=${lng}`;
         btnGoogle.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
         btnApple.href  = `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d&t=m`;
+
+        // Fade card back in
+        cardStation.classList.remove('updating');
 
         renderMarkers(stations);
         if (isNewStation) await drawRoute(station);
@@ -322,6 +372,7 @@
             cardName.textContent    = 'Geen stations gevonden';
             cardAddress.textContent = 'Vergroot de zoekradius';
             cardPrice.textContent   = '—';
+            cardPrice.classList.add('no-price');
             cardDistance.textContent = '—';
             return;
         }
@@ -345,9 +396,16 @@
         fetchTimer = setTimeout(fetchAndRender, 500);
     });
 
+    // --- Show UI elements with stagger ---
+    function showUI() {
+        setTimeout(() => topBar.classList.add('visible'), 100);
+        setTimeout(() => sliderBar.classList.add('visible'), 250);
+        setTimeout(() => bottomCard.classList.add('visible'), 400);
+    }
+
     // --- Init ---
     async function init() {
-        loadingText.textContent = 'Locatie ophalen...';
+        setLoadingStep('step-location', 10);
 
         userLocation = await new Promise((resolve) => {
             navigator.geolocation.getCurrentPosition(
@@ -357,18 +415,28 @@
             );
         });
 
-        loadingText.textContent = 'Kaart laden...';
+        setLoadingStep('step-map', 30);
         initMap(userLocation.lat, userLocation.lng);
 
-        loadingText.textContent = 'Brandstoftypes ophalen...';
+        setLoadingStep('step-fuel', 55);
         await loadFuelTypes();
 
-        loadingText.textContent = 'Tankstations ophalen...';
+        setLoadingStep('step-route', 80);
         await fetchAndRender();
+
+        // Complete loading
+        loadingBar.style.width = '100%';
+        document.getElementById('step-route').classList.remove('active');
+        document.getElementById('step-route').classList.add('done');
+
+        await new Promise(r => setTimeout(r, 400));
 
         setTimeout(() => map.invalidateSize(), 100);
         loading.classList.add('done');
         updateSliderTrack();
+
+        // Stagger UI elements in
+        showUI();
     }
 
     init();
